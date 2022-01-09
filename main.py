@@ -36,9 +36,16 @@ def get_news(a_media):
 
     coverpage = response.content
 
+    
+
+    def f_all_params(tag):
+        return tag.has_attr('h2') or tag.has_attr('article') or tag.has_attr('class=primary-content__article')
+    
+
     soup1 = BeautifulSoup(coverpage, 'html.parser')
     # Important call - Choose the correct classname
-    coverpage_news = soup1.find_all(['h2','article']) # h2 for kathimerini
+    coverpage_news = soup1.find_all(
+        ['h2', 'article'], 'primary-content__article')  # h2 for kathimerini
     print("Number of h2 headers in " + str(a_media['Name']) + " is :" + str(len(coverpage_news)) + '\n')
     # We have to delete elements such as albums and other things
     # den kserw ti kanei
