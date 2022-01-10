@@ -1,4 +1,7 @@
 import os
+import re
+from pprint import pp
+from pprint import pprint
 from typing import Pattern
 import requests
 from bs4 import BeautifulSoup
@@ -36,16 +39,63 @@ def get_news(a_media):
 
     coverpage = response.content
 
-    
+
+    # def f_all_params(tag):
+
+    #     if tag.has_attr('class'):
+    #         if ('full-link' in tag['class']) or ('article' in tag['class']):  # efsyn cms
+    #             print("Ok this is a good sign")
+    #             return(True)
+
+    #     for child in tag.descendants: # this is usefull recersive for all the childern of a tag
+    #         if child.name == 'h2' or child.name == 'article':
+    #             return(True)
+
+    #     return tag.has_attr('h2') or tag.has_attr('article')
 
     def f_all_params(tag):
-        return tag.has_attr('h2') or tag.has_attr('article') or tag.has_attr('class=primary-content__article')
-    
+
+            if tag.has_attr('class'):
+            #    if ('full-link' in tag['class']) or ('article' in tag['class']):  # efsyn cms
+            #         print("Ok this is a good sign")
+            #         return(True)
+                
+               
+                for class_name in tag['class']:
+                    if re.match(".*article.*", class_name):
+                        return(True)
+
+        #     for child in tag.descendants: # this is usefull recersive for all the childern of a tag
+        #         if child.name == 'h2' or child.name == 'article':
+        #             return(True)
+
+
 
     soup1 = BeautifulSoup(coverpage, 'html.parser')
+    #pprint(soup1)
+   
     # Important call - Choose the correct classname
-    coverpage_news = soup1.find_all(
-        ['h2', 'article'], 'primary-content__article')  # h2 for kathimerini
+    #['h2', 'article'], 'primary-content__article')  # h2 for kathimerini
+    coverpage_news = soup1.find_all(f_all_params)
+    
+    #coverpage_news = soup1.select('a[href^="https://www.kathimerini.gr/"]')
+    
+    #coverpage_news = soup1.select('a[href^="https://www.kathimerini.gr/"]')
+
+    #coverpage_news = soup1.select('div[class^="article"]')
+
+    
+    """ 
+    #write to file processed.
+        with open('coverpage_news.txt','w') as f:
+            f.write(str(coverpage_news))
+    """
+
+   #with open('coverpage_news.txt', 'w') as f:
+        #f.write(soup1.b.prettify())
+
+    
+        
     print("Number of h2 headers in " + str(a_media['Name']) + " is :" + str(len(coverpage_news)) + '\n')
     # We have to delete elements such as albums and other things
     # den kserw ti kanei
@@ -61,16 +111,27 @@ def get_news(a_media):
     for n in np.arange(0, len(coverpage_news)): 
 
         # Getting the link of the article
-        if (not coverpage_news[n].find('a')):
-            continue
+        if coverpage_news[n].has_attr('href'):
+            link = coverpage_news[n]['href']
+        else:
+        
+            if (not coverpage_news[n].find('a')):
+                continue
 
-        link = coverpage_news[n].find('a')['href']
-        #if not ("https" in link):
+            link = coverpage_news[n].find('a')['href']
+            #if not ("https" in link):
 
         list_links.append(link)
 
         # Getting the title
-        title = coverpage_news[n].find('a').get_text()
+        if coverpage_news[n].name == 'a': # this is for efsyn.gr
+            #print('I found the solution for efsyn.gr')
+            title = coverpage_news[n].get_text()
+        else:
+            title = coverpage_news[n].find('a').get_text()
+        
+        # Gettin
+            
         list_titles.append(title)
 
         # Reading the content (it is divided in paragraphs)
@@ -83,8 +144,11 @@ def get_news(a_media):
         #print("Type of body is:" + str(type(body)) +'\n')
         if (len(body)>0):
             x = body[0].find_all('p')
-            if len(x) == 0: continue
+            if len(x) == 0: 
+                print("Continue because there is no 'p' elements \n")
+                continue
         else:
+            print("Continue because there is no 'div' elements \n")
             continue
 
         # Unifying the paragraphs
@@ -127,5 +191,6 @@ def get_news(a_media):
 
 # for media in media_list:
 #     print(get_news(media))
-print(get_news(media_list[1]))
+
+print(get_news(media_list[0]))
 
