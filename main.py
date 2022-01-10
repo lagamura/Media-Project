@@ -121,18 +121,13 @@ def get_news(a_media):
             link = coverpage_news[n].find('a')['href']
             #if not ("https" in link):
 
+        if link in list_links: continue 
         list_links.append(link)
 
         # Getting the title
-        if coverpage_news[n].name == 'a': # this is for efsyn.gr
-            #print('I found the solution for efsyn.gr')
-            title = coverpage_news[n].get_text()
-        else:
-            title = coverpage_news[n].find('a').get_text()
-        
+
         # Gettin
             
-        list_titles.append(title)
 
         # Reading the content (it is divided in paragraphs)
         linkresolved = requests.compat.urljoin(a_media['Url'],link)
@@ -140,6 +135,11 @@ def get_news(a_media):
         article_content = article.content
         #print("Type of article is:" + str(type(article)))
         soup_article = BeautifulSoup(article_content, 'html.parser')
+
+        # find title by h1 header
+        title = soup_article.find('h1').getText()
+        list_titles.append(title)
+
         body = soup_article.find_all('div')  # class_='entry-content'
         #print("Type of body is:" + str(type(body)) +'\n')
         if (len(body)>0):
