@@ -8,22 +8,8 @@ from bs4 import BeautifulSoup
 import numpy as np
 import json
 import pandas as pd
+from medialist import *
 
-media_list = [
-    {
-    "Name":"Kathimerini",
-    "Url": 'https://www.kathimerini.gr/',
-    "Political_view":"central-right"
-    },
-    {
-        "Name": "Efsyn",
-        "Url": 'https://www.efsyn.gr/',
-        "Political_view": "central-left"
-    }
-]
-
-kathimerini = 'https://www.kathimerini.gr/'
-efsyn = 'https://www.efsyn.gr/'
 
 
 
@@ -55,6 +41,9 @@ def get_news(a_media):
 
     def f_all_params(tag):
 
+            if tag.name == 'article': #some cms uses this header for articles
+                return True
+
             if tag.has_attr('class'):
             #    if ('full-link' in tag['class']) or ('article' in tag['class']):  # efsyn cms
             #         print("Ok this is a good sign")
@@ -62,7 +51,7 @@ def get_news(a_media):
                 
                
                 for class_name in tag['class']:
-                    if re.match(".*article.*", class_name):
+                    if re.match(".*article.*", class_name) or re.match("art-container", class_name) or re.match("single-post-container", class_name):
                         return(True)
 
         #     for child in tag.descendants: # this is usefull recersive for all the childern of a tag
@@ -72,16 +61,13 @@ def get_news(a_media):
 
 
     soup1 = BeautifulSoup(coverpage, 'html.parser')
-    #pprint(soup1)
    
     # Important call - Choose the correct classname
     #['h2', 'article'], 'primary-content__article')  # h2 for kathimerini
     coverpage_news = soup1.find_all(f_all_params)
-    
-    #coverpage_news = soup1.select('a[href^="https://www.kathimerini.gr/"]')
-    
-    #coverpage_news = soup1.select('a[href^="https://www.kathimerini.gr/"]')
 
+    #coverpage_news = soup1.select('a[href^="https://www.kathimerini.gr/"]')
+    
     #coverpage_news = soup1.select('div[class^="article"]')
 
     
@@ -96,7 +82,7 @@ def get_news(a_media):
 
     
         
-    print("Number of h2 headers in " + str(a_media['Name']) + " is :" + str(len(coverpage_news)) + '\n')
+    print("Number of class resolved with regex pattern in " + str(a_media['Name']) + " is :" + str(len(coverpage_news)) + '\n')
     # We have to delete elements such as albums and other things
     # den kserw ti kanei
     # coverpage_news = [x for x in coverpage_news if "inenglish" in str(x)]
@@ -116,6 +102,7 @@ def get_news(a_media):
         else:
         
             if (not coverpage_news[n].find('a')):
+                # continuing because there is no href children
                 continue
 
             link = coverpage_news[n].find('a')['href']
@@ -136,8 +123,12 @@ def get_news(a_media):
         #print("Type of article is:" + str(type(article)))
         soup_article = BeautifulSoup(article_content, 'html.parser')
 
-        # find title by h1 header
-        title = soup_article.find('h1').getText()
+        # find title by h1 header. I don't like this syntax explicit for one media to type h2
+        if (a_media['Name'] == 'Leftgr'):
+            title = soup_article.find_all('h2')[1].getText()
+        else:
+            title = soup_article.find('h1').getText()
+
         list_titles.append(title)
 
         body = soup_article.find_all('div')  # class_='entry-content'
@@ -145,7 +136,7 @@ def get_news(a_media):
         if (len(body)>0):
             x = body[0].find_all('p')
             if len(x) == 0: 
-                print("Continue because there is no 'p' elements \n")
+                #print("Continue because there is no 'p' elements \n")
                 continue
         else:
             print("Continue because there is no 'div' elements \n")
@@ -192,5 +183,5 @@ def get_news(a_media):
 # for media in media_list:
 #     print(get_news(media))
 
-print(get_news(media_list[0]))
+print(get_news(media_list[10]))
 
