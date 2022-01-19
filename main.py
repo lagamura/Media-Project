@@ -238,7 +238,6 @@ def HeadingSimilarity(tokens1, tokens2):
                     return(True)
 
 
-
                    
 for title_m in data_titles[1]:
     for title in data_titles[4]:
