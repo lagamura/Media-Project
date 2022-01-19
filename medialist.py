@@ -45,13 +45,16 @@ media_list = [
         "Political_view": "gov-friendly"
     },
     {
-        "Name": "Parapolitika",
-        "Url": "https://www.parapolitika.gr/",
-        "Political_view": "gov-friendly"
-    },
-    {
         "Name": "Naftemporiki",  # not-working
         "Url": "https://www.naftemporiki.gr/",
         "Political_view": "gov-friendly"
     },
 ]
+
+"""
+{
+    "Name": "Parapolitika",
+    "Url": "https://www.parapolitika.gr/",
+    "Political_view": "gov-friendly"
+}
+"""
