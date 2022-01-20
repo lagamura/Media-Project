@@ -1,3 +1,4 @@
+from json.tool import main
 import os
 import re
 from pprint import pp
@@ -18,12 +19,31 @@ nlp = spacy.load('el_core_news_lg')  # loading greek core
 
 list_media = []
 data_titles = []
+data_csv_list = []
+
+list_of_left_imparticles = []
 
 
 class MediaScrapped:
     def __init__(self, media_name):
         self.article_titles = get_news(media_name)
         self.media_name = media_name
+
+
+class ImpArticle:
+    main_header_attached = ""
+    article_title = []
+    media_name = []
+    link = []
+
+    def __str__(self):
+        str = ("Printing Object ImpArticle: Main Header: %s \n" %
+               self.main_header_attached)
+        for i in range(len(self.article_title)):
+            str += ("Article_Attached : %s \n Link: %s Media: %s\n" %
+                    (self.article_title[i], self.link[i], self.media_name[i]))
+
+        return (str)
 
 
 def get_news(a_media):
@@ -71,29 +91,11 @@ def get_news(a_media):
     soup1 = BeautifulSoup(coverpage, 'html.parser')
 
     # Important call - Choose the correct classname
-    # ['h2', 'article'], 'primary-content__article')  # h2 for kathimerini
+
     coverpage_news = soup1.find_all(f_all_params)
-
-    #coverpage_news = soup1.select('a[href^="https://www.kathimerini.gr/"]')
-
-    #coverpage_news = soup1.select('div[class^="article"]')
-
-    """ 
-    #write to file processed.
-        with open('coverpage_news.txt','w') as f:
-            f.write(str(coverpage_news))
-    """
-
-   # with open('coverpage_news.txt', 'w') as f:
-    # f.write(soup1.b.prettify())
 
     print("Number of class resolved with regex pattern in " +
           str(a_media['Name']) + " is :" + str(len(coverpage_news)) + '\n')
-    # We have to delete elements such as albums and other things
-    # den kserw ti kanei
-    # coverpage_news = [x for x in coverpage_news if "inenglish" in str(x)]
-
-    #number_of_articles = 5
 
     # Empty lists for content, links and titles
     news_contents = []
@@ -135,6 +137,7 @@ def get_news(a_media):
         else:
             title = soup_article.find('h1').getText()
 
+        title = title.replace('\n', ' ')  # remove whitespace trailing
         list_titles.append(title)
 
         body = soup_article.find_all('div')  # class_='entry-content'
@@ -180,6 +183,8 @@ def get_news(a_media):
     fullname = os.path.join(outdir, "reports/" + outname)
 
     df_show_info.to_csv(fullname)
+    # fullname_json = fullname[:-4] + '.json'
+    # df_show_info.to_json(fullname_json)
 
     return (df_show_info)  # function can also returned df_features
 
@@ -189,25 +194,10 @@ def scrapp_all():
         list_media.append(MediaScrapped(media))
 
 
-# ### READ KATHIMERINI ###
-# path = os.path.dirname(os.path.dirname(__file__))
-# outdir = path
-# outname = 'Kathimerini' + '.csv'
-
-# fullname = os.path.join(outdir, "reports/" + outname)
-
-# data_csv = pd.read_csv(fullname)
-# data_titles = data_csv["ArticleTitle"]
-
-# #### READ TA NEA ######
-# path = os.path.dirname(os.path.dirname(__file__))
-# outdir = path
-# outname = 'TaNea' + '.csv'
-
-# fullname = os.path.join(outdir, "reports/" + outname)
-
-# data_csv_tanea = pd.read_csv(fullname)
-# data_titles_tanea = data_csv["ArticleTitle"]
+def readall():
+    for media in media_list:
+        readnews(media['Name'])
+    match_leftwing_media()
 
 def readnews(media_name):
     path = os.path.dirname(os.path.dirname(__file__))
@@ -217,46 +207,99 @@ def readnews(media_name):
     fullname = os.path.join(outdir, "reports/" + outname)
 
     data_csv = pd.read_csv(fullname)
+    data_csv_list.append(data_csv)
     data_titles.append(data_csv['Article Title'])
 
-for media in media_list:
-    readnews(media['Name'])
-
-print(data_titles)
+# print(data_titles)
 
 
 def HeadingSimilarity(tokens1, tokens2):
     counter = 0
     for token in tokens1:
-        if (not token.is_stop):
+        if (not token.is_stop and not token.is_punct):
             for token2 in tokens2:
                 similarity_value = token.similarity(token2)
                 if similarity_value > 0.7:
+                    #print(token, token2)
                     counter += 1
                     break  # in order to avoid multiple matchings, but this has pros and cons
                 if counter >= 2:
                     return(True)
 
 
-                   
-for title_m in data_titles[1]:
-    for title in data_titles[4]:
-        tokens1 = nlp(title_m)
-        tokens2 = nlp(title)
-        if(HeadingSimilarity(tokens1, tokens2)):
-            print("Titles matching with similarity are: Efsyn: %s - Avgi: %s" %
-                  (title_m, title))
-            #CreateThread()  # this function will create an important topic targeted by other media
-            input(" press enter to continue")
-            break
+# Familiar media lookup
+def match_leftwing_media():
+    for i in range(0, 3):
+        for j in range(i+1, 3):
+            for title_m in data_csv_list[i]["Article Title"]:
+                index = 0
+                for title in data_csv_list[j]["Article Title"]:
+                    index += 1
+                    tokens1 = nlp(title_m)
+                    tokens2 = nlp(title)
+                    if(HeadingSimilarity(tokens1, tokens2)):
+                        #print("Titles matching with similarity are: Efsyn: %s - Avgi: %s" %(title_m, title))
+                        # CreateThread()  # this function will create an important topic targeted by other media
+                        #input(" press enter to continue")
+                        p = ImpArticle()
+                        p.main_header_attached = title_m
+                        p.article_title .append(
+                            str(title).replace('\t', '').replace('\n', ''))
+                        p.media_name.append(data_csv_list[j].at[1, 'Newspaper'])
+                        p.link.append(
+                            data_csv_list[j].loc[index-1, 'Article Link'])
+                        list_of_left_imparticles.append(p)
+                        break
+
+    for imparticle in list_of_left_imparticles:
+        print(imparticle.__str__())
 
 
+menu_options = {
+    1: 'Scrapp All',
+    2: 'Read csvs and Match leftwing',
+    3: 'Read csvs and Match rightwing',
+    4: 'Exit',
+}
 
-'''
-tokens1 = nlp("Ανοιξε το βιβλίο προσφορών για το δεκαετές ομόλογο")
-tokens2 = nlp("Daily Telegraph: Πάτμος και Αθήνα στις καλύτερες κρουαζιέρες του κόσμου για το 2022")
+
+def print_menu():
+    for key in menu_options.keys():
+        print(key, '--', menu_options[key])
+
+def option3():
+    print("not yet accomplished \n")
+
+
+if __name__ == '__main__':
+    while(True):
+        print_menu()
+        option = ''
+        try:
+            option = int(input('Enter your choice: '))
+        except:
+            print('Wrong input. Please enter a number ...')
+        # Check what choice was entered and act accordingly
+        if option == 1:
+            scrapp_all()
+        elif option == 2:
+            readall()
+        elif option == 3:
+            option3()
+        elif option == 4:
+            print('Thanks message before exiting')
+            exit()
+        else:
+            print('Invalid option. Please enter a number between 1 and 4.')
+
+
+"""
+#TESTS
+
+tokens1 = nlp("«Κάτι σαράβαλες καρδιές»*")
+tokens2 = nlp("Κορωνοϊός / Διαρρέουν χαλάρωση μέτρων παρά την επέλαση της «Όμικρον»")
 print(tokens1.similarity(tokens2))
 
 if(HeadingSimilarity(tokens1, tokens2)):
     print("Matched")
-'''
+"""
