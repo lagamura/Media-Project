@@ -1,11 +1,10 @@
 from json.tool import main
 import os
 import re
-from pprint import pp
-from pprint import pprint
+import time
+from tokenize import Name
 from turtle import heading
 from typing import Pattern
-from webbrowser import get
 import requests
 from bs4 import BeautifulSoup
 import numpy as np
@@ -13,6 +12,9 @@ import json
 import pandas as pd
 import spacy
 from medialist import *
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 
 nlp = spacy.load('el_core_news_lg')  # loading greek core
@@ -52,23 +54,18 @@ def get_news(a_media):
     list_links = []
     list_titles = []
 
-    response = requests.get(a_media['Url'])
-    response.status_code
+    if (a_media['Dynamic'] == True):
+        driver = webdriver.Chrome(service=Service(
+            ChromeDriverManager().install()))
+        driver.get(a_media['Url'])
+        time.sleep(5)
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
 
-    coverpage = response.content
-
-    # def f_all_params(tag):
-
-    #     if tag.has_attr('class'):
-    #         if ('full-link' in tag['class']) or ('article' in tag['class']):  # efsyn cms
-    #             print("Ok this is a good sign")
-    #             return(True)
-
-    #     for child in tag.descendants: # this is usefull recersive for all the childern of a tag
-    #         if child.name == 'h2' or child.name == 'article':
-    #             return(True)
-
-    #     return tag.has_attr('h2') or tag.has_attr('article')
+    else:
+        response = requests.get(a_media['Url'])
+        response.status_code
+        coverpage = response.content
+        soup = BeautifulSoup(coverpage, 'html.parser')
 
     def f_all_params(tag):
 
@@ -76,23 +73,13 @@ def get_news(a_media):
             return True
 
         if tag.has_attr('class'):
-            #    if ('full-link' in tag['class']) or ('article' in tag['class']):  # efsyn cms
-            #         print("Ok this is a good sign")
-            #         return(True)
-
             for class_name in tag['class']:
                 if re.match(".*article.*", class_name) or re.match("art-container", class_name) or re.match("single-post-container", class_name):
                     return(True)
 
-    #     for child in tag.descendants: # this is usefull recersive for all the childern of a tag
-    #         if child.name == 'h2' or child.name == 'article':
-    #             return(True)
-
-    soup1 = BeautifulSoup(coverpage, 'html.parser')
-
     # Important call - Choose the correct classname
 
-    coverpage_news = soup1.find_all(f_all_params)
+    coverpage_news = soup.find_all(f_all_params)
 
     print("Number of class resolved with regex pattern in " +
           str(a_media['Name']) + " is :" + str(len(coverpage_news)) + '\n')
@@ -107,6 +94,11 @@ def get_news(a_media):
         # Getting the link of the article
         if coverpage_news[n].has_attr('href'):
             link = coverpage_news[n]['href']
+            if link.startswith("javascript:"):
+                # this happens only in media Ethnos, because they use href = "javascript:..."
+                print("I found a bug \n")
+                continue
+
         else:
 
             if (not coverpage_news[n].find('a')):
@@ -114,6 +106,9 @@ def get_news(a_media):
                 continue
 
             link = coverpage_news[n].find('a')['href']
+            if link.startswith("javascript:"):
+                print("I found a bug \n")
+                continue
             # if not ("https" in link):
 
         if link in list_links:
@@ -134,8 +129,13 @@ def get_news(a_media):
         # find title by h1 header. I don't like this syntax explicit for one media to type h2
         if (a_media['Name'] == 'Leftgr'):
             title = soup_article.find_all('h2')[1].getText()
-        else:
+        # some articles does not have h1 as a header tag
+        elif soup_article.has_attr('h1'):
             title = soup_article.find('h1').getText()
+        elif soup_article.has_attr('h2'):
+            title = soup_article.find('h2').getText()
+        else:
+            title = ''
 
         title = title.replace('\n', ' ')  # remove whitespace trailing
         list_titles.append(title)
@@ -183,8 +183,6 @@ def get_news(a_media):
     fullname = os.path.join(outdir, "reports/" + outname)
 
     df_show_info.to_csv(fullname)
-    # fullname_json = fullname[:-4] + '.json'
-    # df_show_info.to_json(fullname_json)
 
     return (df_show_info)  # function can also returned df_features
 
@@ -198,6 +196,7 @@ def readall():
     for media in media_list:
         readnews(media['Name'])
     match_leftwing_media()
+
 
 def readnews(media_name):
     path = os.path.dirname(os.path.dirname(__file__))
@@ -245,7 +244,8 @@ def match_leftwing_media():
                         p.main_header_attached = title_m
                         p.article_title .append(
                             str(title).replace('\t', '').replace('\n', ''))
-                        p.media_name.append(data_csv_list[j].at[1, 'Newspaper'])
+                        p.media_name.append(
+                            data_csv_list[j].at[1, 'Newspaper'])
                         p.link.append(
                             data_csv_list[j].loc[index-1, 'Article Link'])
                         list_of_left_imparticles.append(p)
@@ -267,30 +267,35 @@ def print_menu():
     for key in menu_options.keys():
         print(key, '--', menu_options[key])
 
+
 def option3():
     print("not yet accomplished \n")
 
 
-if __name__ == '__main__':
-    while(True):
-        print_menu()
-        option = ''
-        try:
-            option = int(input('Enter your choice: '))
-        except:
-            print('Wrong input. Please enter a number ...')
-        # Check what choice was entered and act accordingly
-        if option == 1:
-            scrapp_all()
-        elif option == 2:
-            readall()
-        elif option == 3:
-            option3()
-        elif option == 4:
-            print('Thanks message before exiting')
-            exit()
-        else:
-            print('Invalid option. Please enter a number between 1 and 4.')
+def main():
+    if __name__ == '__main__':
+        while(True):
+            print_menu()
+            option = ''
+            try:
+                option = int(input('Enter your choice: '))
+            except:
+                print('Wrong input. Please enter a number ...')
+            # Check what choice was entered and act accordingly
+            if option == 1:
+                scrapp_all()
+            elif option == 2:
+                readall()
+            elif option == 3:
+                option3()
+            elif option == 4:
+                print('Thanks message before exiting')
+                exit()
+            else:
+                print('Invalid option. Please enter a number between 1 and 4.')
+
+
+get_news(media_list[4])
 
 
 """
