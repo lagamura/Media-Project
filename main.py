@@ -237,9 +237,6 @@ def match_leftwing_media():
                     tokens1 = nlp(title_m)
                     tokens2 = nlp(title)
                     if(HeadingSimilarity(tokens1, tokens2)):
-                        #print("Titles matching with similarity are: Efsyn: %s - Avgi: %s" %(title_m, title))
-                        # CreateThread()  # this function will create an important topic targeted by other media
-                        #input(" press enter to continue")
                         p = ImpArticle()
                         p.main_header_attached = title_m
                         p.article_title .append(
